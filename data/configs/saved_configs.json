@@ -1,0 +1,55 @@
+{
+  "PinkJelly": {
+    "name": "PinkJelly",
+    "data": {
+      "art_style": "Minimalist",
+      "mood": "Light/Cheerful",
+      "color_palette": "Full Color",
+      "character_style": "Mature/Adult",
+      "line_style": "Clean/Precise",
+      "composition": "Dynamic/Action"
+    },
+    "created_at": "2025-10-02T14:33:56.697815",
+    "updated_at": "2025-10-02T14:33:56.697815"
+  },
+  "gen": {
+    "name": "gen",
+    "data": {
+      "art_style": "Minimalist",
+      "mood": "Light/Cheerful",
+      "color_palette": "Full Color",
+      "character_style": "Mature/Adult",
+      "line_style": "Clean/Precise",
+      "composition": "Dynamic/Action"
+    },
+    "created_at": "2025-10-09T22:42:26.448057",
+    "updated_at": "2025-10-09T22:42:26.448057"
+  },
+  "dd": {
+    "name": "dd",
+    "data": {
+      "art_style": "Minimalist",
+      "mood": "Light/Cheerful",
+      "color_palette": "Full Color",
+      "character_style": "Mature/Adult",
+      "line_style": "Clean/Precise",
+      "composition": "Dynamic/Action"
+    },
+    "created_at": "2025-10-09T22:48:13.305345",
+    "updated_at": "2025-10-09T22:48:13.305345"
+  },
+  "Cat": {
+    "name": "Cat",
+    "data": {
+      "art_style": "Minimalist",
+      "mood": "Light/Cheerful",
+      "color_palette": "Full Color",
+      "character_style": "Mature/Adult",
+      "line_style": "Clean/Precise",
+      "composition": "Dynamic/Action",
+      "additional_notes": "White background"
+    },
+    "created_at": "2025-10-10T14:25:32.966749",
+    "updated_at": "2025-10-10T14:25:32.966749"
+  }
+}

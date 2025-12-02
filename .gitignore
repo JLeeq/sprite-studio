@@ -1,0 +1,95 @@
+# Environment variables and API keys
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+config.json
+secrets.json
+api_keys.txt
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Gradio cache and temporary files
+gradio_cached_examples/
+gradio_cached_examples/
+*.gradio_cache
+.gradio/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Output directories (optional - uncomment if you don't want to track generated assets)
+# data/output/
+# data/examples/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+node_modules/
+frontend/node_modules/
+# Next.js SWC binary (large file)
+node_modules/@next/swc-darwin-arm64/next-swc.darwin-arm64.node
+node_modules/
+frontend/node_modules/
