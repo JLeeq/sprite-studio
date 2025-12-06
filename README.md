@@ -148,26 +148,67 @@ generated/
 3. **Gradio** calls `validate_access_token` from `supabase_client.py` to resolve the `user_id`.
 4. **Backend** writes rows into `user_projects` / `generated_images` and uploads resulting images to the `generated` bucket using the service-role key.
 
-## 🧱 FastAPI + Next.js Runtime
+## 🧱 Hybrid Architecture (Next.js + Gradio)
 
-- `api_server.py` exposes REST endpoints (`/generate/*`, `/profile`, `/auth/*`) powered by FastAPI. It validates Supabase JWTs, enforces the 10-token quota, uploads results to Supabase Storage, and returns public URLs.
-- `frontend/components/StudioApp.tsx` is the new primary UI. It handles Supabase email/password auth in React, shows the login gate, and talks to the FastAPI endpoints directly—no Gradio iframe required.
-- Gradio can now be treated as optional/legacy (useful for debugging), while Next.js serves the production experience.
+- **Next.js Dashboard** (`frontend/`): Login, account management, and dashboard UI
+- **Gradio Studio** (`backend/game_asset_app.py`): Full-featured sprite generation tool
+- **FastAPI Backend** (`backend/api_server.py`): REST API for Next.js (optional, for future use)
+
+### Architecture Flow
+
+1. User logs in at `http://localhost:3000` (Next.js)
+2. Dashboard shows token count and "Open Sprite Studio" button
+3. Clicking the button navigates to `/studio` (same window, no popup)
+4. Gradio UI loads in an iframe with token passed via query string
+5. Token updates are synchronized via `postMessage` between iframe and parent
 
 ### Running locally
 
+**Option 1: Full Stack (Recommended for development)**
+
 ```bash
-# Backend
+# Terminal 1: Gradio UI
+cd /Users/jlee/4-1/Sprite/bug_Sprite_generator1-feature-ui-tabs-update
 uv sync
+uv run python -m backend.game_asset_app
+# Access at http://localhost:7861
+
+# Terminal 2: FastAPI Backend (optional, for Next.js API calls)
 uv run python -m uvicorn backend.api_server:app --reload --host 0.0.0.0 --port 8000
 
-# Frontend
+# Terminal 3: Next.js Frontend
 cd frontend
 npm install
 npm run dev
+# Access at http://localhost:3000
 ```
 
-Open `http://localhost:3000`, sign in, and start generating assets. Tokens, last generated image, and all five workflows (Character, Item, Sprites, Background, Sprite Animation) now live inside the React dashboard.
+**Option 2: Gradio Only (Legacy)**
+
+```bash
+cd /Users/jlee/4-1/Sprite/bug_Sprite_generator1-feature-ui-tabs-update
+uv sync
+uv run python -m backend.game_asset_app
+# Access at http://localhost:7861
+```
+
+### Environment Variables
+
+**Backend (.env):**
+```env
+GEMINI_API_KEY=your_gemini_api_key
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+```
+
+**Frontend (frontend/.env.local):**
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_GRADIO_URL=http://localhost:7861
+```
 
 ## 🛠️ Configuration
 

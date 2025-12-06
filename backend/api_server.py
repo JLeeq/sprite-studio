@@ -38,10 +38,33 @@ from .pixel_character_generator import generate_pixel_character_interface
 def create_app() -> FastAPI:
     app = FastAPI(title="Sprite Studio API")
 
-    allowed_origins = os.getenv("API_ALLOWED_ORIGINS", "*").split(",")
+    # CORS Configuration
+    # Development origins + Production domains
+    allowed_origins = [
+        # Development
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:7861",
+        "http://127.0.0.1:7861",
+        # Production
+        "https://sprite-studio.com",
+        "https://www.sprite-studio.com",
+    ]
+    
+    # Add production origins from environment variable
+    # Example: API_ALLOWED_ORIGINS=https://myapp.vercel.app,https://myapp.com
+    env_origins = os.getenv("API_ALLOWED_ORIGINS", "")
+    if env_origins:
+        for origin in env_origins.split(","):
+            origin = origin.strip()
+            if origin and origin not in allowed_origins:
+                allowed_origins.append(origin)
+    
+    print(f"[CORS] Allowed origins: {allowed_origins}")
+    
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[origin.strip() for origin in allowed_origins],
+        allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

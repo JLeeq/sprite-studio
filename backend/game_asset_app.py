@@ -22,6 +22,7 @@ from .supabase_client import (
     consume_user_token,
     record_generated_image,
     get_last_generated_image_url,
+    validate_access_token,
 )
 
 # 분리된 모듈들 import
@@ -758,26 +759,7 @@ def create_game_asset_interface():
         margin-bottom: 3rem;
     }
 
-    #login-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(6, 9, 23, 0.95);
-        z-index: 999;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 1rem;
-        padding: 2rem;
-        text-align: center;
-        backdrop-filter: blur(8px);
-    }
-
-    #login-overlay .gr-textbox,
-    #login-overlay .gr-button {
-        width: 320px;
-        max-width: 100%;
-    }
+    /* 로그인 오버레이 UI 제거됨 (Next.js에서 로그인 처리) */
 
     #user-meta-row {
         display: flex;
@@ -799,6 +781,96 @@ def create_game_asset_interface():
     }
     """
     
+    # JavaScript for postMessage token updates and auto-login
+    TOKEN_UPDATE_JS = """
+    <script>
+    (function() {
+        // Extract token count from token display text
+        function extractTokenCount(text) {
+            if (!text) return null;
+            const match = text.match(/Tokens Remaining:\\s*\\*\\*(\\d+)\\*\\*/);
+            return match ? parseInt(match[1], 10) : null;
+        }
+        
+        // Send token update to parent window (if in iframe)
+        function sendTokenUpdate(tokenCount) {
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'token-updated',
+                    tokens: tokenCount
+                }, '*');
+            }
+        }
+        
+        // 로그인 오버레이 UI가 제거되었으므로 이 함수는 더 이상 필요 없음
+        // 하지만 사용자 메타 행 표시는 유지
+        function ensureUserMetaRowVisible() {
+            const userMetaRow = document.querySelector('#user-meta-row');
+            if (userMetaRow) {
+                userMetaRow.style.cssText = 'display: flex !important; visibility: visible !important;';
+            }
+        }
+        
+        // Monitor token display updates
+        function observeTokenDisplay() {
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                        const tokenElements = document.querySelectorAll('[id*="token"], .token-display, markdown');
+                        tokenElements.forEach(function(el) {
+                            const text = el.textContent || el.innerText || '';
+                            const tokenCount = extractTokenCount(text);
+                            if (tokenCount !== null) {
+                                sendTokenUpdate(tokenCount);
+                            }
+                        });
+                    }
+                });
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+            
+            setInterval(function() {
+                const tokenElements = document.querySelectorAll('[id*="token"], .token-display, markdown');
+                tokenElements.forEach(function(el) {
+                    const text = el.textContent || el.innerText || '';
+                    const tokenCount = extractTokenCount(text);
+                    if (tokenCount !== null) {
+                        sendTokenUpdate(tokenCount);
+                    }
+                });
+            }, 1000);
+        }
+        
+        // Initialize when DOM is ready
+        function init() {
+            // 사용자 메타 행 표시
+            ensureUserMetaRowVisible();
+            setTimeout(ensureUserMetaRowVisible, 100);
+            setTimeout(ensureUserMetaRowVisible, 500);
+            
+            observeTokenDisplay();
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+        
+        // window.load 이벤트에서도 실행
+        window.addEventListener('load', function() {
+            setTimeout(ensureUserMetaRowVisible, 100);
+            setTimeout(ensureUserMetaRowVisible, 500);
+        });
+    })();
+    </script>
+    """
+    
     with gr.Blocks(
         title="Sprite Studio", 
         theme=gr.themes.Soft(),
@@ -806,11 +878,14 @@ def create_game_asset_interface():
     ) as demo:
         gr.HTML("""
         <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-        """)
+        """ + TOKEN_UPDATE_JS)
         gr.Markdown("# Sprite Studio", elem_classes=["app-title"])
         gr.Markdown("By Jian Lee", elem_classes=["app-subtitle"])
 
         user_session_state = gr.State(_default_user_session())
+        
+        # Hidden input for token (JavaScript에서 채움) - 모든 이벤트에서 사용하기 위해 여기서 정의
+        token_input = gr.Textbox(visible=False, value="", label="")
 
         with gr.Row(elem_id="user-meta-row", visible=False) as user_meta_row:
             token_display = gr.Markdown(
@@ -825,21 +900,18 @@ def create_game_asset_interface():
             elem_id="last-image-preview"
         )
 
-        with gr.Column(elem_id="login-overlay") as login_overlay:
-            gr.Markdown("## 🔐 Sign in to Sprite Studio", elem_id="login-title")
-            login_email = gr.Textbox(label="Email", placeholder="you@example.com")
-            login_password = gr.Textbox(label="Password", type="password")
-            with gr.Row():
-                login_button = gr.Button("Sign In", variant="primary")
-                signup_button = gr.Button("Create Account", variant="secondary")
-            auth_status = gr.Markdown("", elem_id="auth-status")
+        # 로그인/회원가입 UI 제거 (Next.js에서 이미 로그인 처리)
+        # 토큰은 쿼리스트링으로 전달받아 자동 검증
+        auth_status = gr.Markdown("", elem_id="auth-status", visible=False)
 
-        def _token_component_update_from_state(session: Dict) -> gr.Update:
+        # gradio 5 uses the function gr.update(...) but does not expose a gr.Update type.
+        # Using a dict return type here avoids an AttributeError at import time.
+        def _token_component_update_from_state(session: Dict) -> Dict:
             if session.get("authenticated"):
                 return gr.update(value=_format_token_text(session.get("tokens", 0)), visible=True)
             return gr.update(value="Sign in to start generating assets.", visible=False)
 
-        def _last_image_component_update_from_state(session: Dict) -> gr.Update:
+        def _last_image_component_update_from_state(session: Dict) -> Dict:
             url = session.get("last_image_url")
             if session.get("authenticated") and url:
                 return gr.update(value=url, visible=True)
@@ -918,6 +990,73 @@ def create_game_asset_interface():
                 gr.update(visible=True),
                 updated_session,
             )
+
+        def handle_auto_login_from_token(token: str):
+            """쿼리스트링의 토큰으로 자동 로그인 (UI 없이)"""
+            print(f"[Auto-login] Function called with token: {token[:20] if token else 'None'}...")
+            
+            # 항상 새로운 기본 세션으로 시작
+            session = _default_user_session()
+            
+            if not token or token.strip() == "":
+                print("[Auto-login] No token provided")
+                # 토큰이 없으면 에러 메시지만 표시 (UI는 생성 탭 그대로)
+                return (
+                    "⚠️ No authentication token. Please log in from the main page.",
+                    _token_component_update_from_state(session),
+                    _last_image_component_update_from_state(session),
+                    gr.update(visible=False),  # user_meta_row 숨기기
+                    session,
+                    ""  # token_input (빈 값)
+                )
+            
+            try:
+                print(f"[Auto-login] Validating token...")
+                # 토큰 검증
+                claims = validate_access_token(token.strip())
+                user_id = claims.get("sub")
+                
+                if not user_id:
+                    raise ValueError("Invalid token: no user ID")
+                
+                print(f"[Auto-login] Token validated, user_id: {user_id}")
+                
+                # 토큰 잔액 확인 및 초기화
+                tokens = ensure_user_token_balance(user_id)
+                last_image_url = get_last_generated_image_url(user_id)
+                
+                print(f"[Auto-login] User tokens: {tokens}, last_image: {last_image_url}")
+                
+                # 세션 업데이트
+                updated_session = {
+                    "authenticated": True,
+                    "user_id": user_id,
+                    "tokens": tokens,
+                    "last_image_url": last_image_url,
+                    "access_token": token.strip(),
+                }
+                
+                print("[Auto-login] Auto-login successful")
+                
+                return (
+                    "",  # auth_status (빈 문자열 = 성공, 메시지 없음)
+                    _token_component_update_from_state(updated_session),
+                    _last_image_component_update_from_state(updated_session),
+                    gr.update(visible=True),   # user_meta_row 표시
+                    updated_session,
+                    token.strip()  # token_input에 저장
+                )
+            except Exception as exc:  # noqa: BLE001
+                # 토큰 검증 실패 시 에러 메시지 표시
+                print(f"[Auto-login] Token validation failed: {exc}")
+                return (
+                    f"⚠️ Authentication failed: {str(exc)}. Please refresh the page.",
+                    _token_component_update_from_state(session),
+                    _last_image_component_update_from_state(session),
+                    gr.update(visible=False),  # user_meta_row 숨기기
+                    session,
+                    ""  # token_input (빈 값)
+                )
 
         def handle_sign_out(session: Dict):
             try:
@@ -1488,9 +1627,31 @@ def create_game_asset_interface():
                                       character_style, line_style, composition, additional_notes, 
                                       character_reference_image, item_reference_image, 
                                       char_image_width, char_image_height, char_lock_aspect_ratio, char_use_percentage,
-                                      user_session):
+                                      user_session, access_token):
             """모드에 따라 적절한 생성 함수 호출하고 UI 업데이트"""
+            print(f"[Generate Character] user_session received: {user_session}")
+            print(f"[Generate Character] access_token received: {access_token[:20] if access_token else 'None'}...")
             session = user_session or _default_user_session()
+            
+            # 세션이 인증되지 않았지만 토큰이 있으면 직접 인증 시도
+            if not session.get("authenticated") and access_token and access_token.strip():
+                print("[Generate Character] Session not authenticated, trying direct token validation...")
+                try:
+                    claims = validate_access_token(access_token.strip())
+                    user_id = claims.get("sub")
+                    if user_id:
+                        tokens = ensure_user_token_balance(user_id)
+                        session = {
+                            "authenticated": True,
+                            "user_id": user_id,
+                            "tokens": tokens,
+                            "access_token": access_token.strip(),
+                        }
+                        print(f"[Generate Character] Direct auth success: user_id={user_id}, tokens={tokens}")
+                except Exception as e:
+                    print(f"[Generate Character] Direct auth failed: {e}")
+            
+            print(f"[Generate Character] Final session: authenticated={session.get('authenticated')}, user_id={session.get('user_id')}, tokens={session.get('tokens')}")
             if not session.get("authenticated"):
                 return [
                     gr.update(visible=True),
@@ -1634,7 +1795,7 @@ def create_game_asset_interface():
             fn=generate_character_wrapper,
             inputs=[character_mode, character_description, art_style, mood, color_palette, character_style, 
                     line_style, composition, additional_notes, character_reference_image, item_reference_image,
-                    char_image_width, char_image_height, char_lock_aspect_ratio, char_use_percentage, user_session_state],
+                    char_image_width, char_image_height, char_lock_aspect_ratio, char_use_percentage, user_session_state, token_input],
             outputs=[welcome_text, character_output, character_status, char_advanced_settings, token_display, last_image_preview, user_session_state]
         )
         
@@ -1643,7 +1804,7 @@ def create_game_asset_interface():
             fn=generate_character_wrapper,
             inputs=[character_mode, character_description, art_style, mood, color_palette, character_style, 
                     line_style, composition, additional_notes, character_reference_image, item_reference_image,
-                    char_image_width, char_image_height, char_lock_aspect_ratio, char_use_percentage, user_session_state],
+                    char_image_width, char_image_height, char_lock_aspect_ratio, char_use_percentage, user_session_state, token_input],
             outputs=[welcome_text, character_output, character_status, char_advanced_settings, token_display, last_image_preview, user_session_state]
         )
         
@@ -1651,9 +1812,26 @@ def create_game_asset_interface():
         def generate_item_wrapper(item_description, item_art_style, item_mood, item_color_palette, item_line_style, 
                                   item_composition, item_additional_notes, item_reference_image,
                                   item_image_width=None, item_image_height=None, item_lock_aspect_ratio=False, 
-                                  item_use_percentage=False, user_session=None):
+                                  item_use_percentage=False, user_session=None, access_token=None):
             """Item 생성하고 UI 업데이트"""
             session = user_session or _default_user_session()
+            
+            # 세션이 인증되지 않았지만 토큰이 있으면 직접 인증 시도
+            if not session.get("authenticated") and access_token and access_token.strip():
+                try:
+                    claims = validate_access_token(access_token.strip())
+                    user_id = claims.get("sub")
+                    if user_id:
+                        tokens = ensure_user_token_balance(user_id)
+                        session = {
+                            "authenticated": True,
+                            "user_id": user_id,
+                            "tokens": tokens,
+                            "access_token": access_token.strip(),
+                        }
+                except Exception:
+                    pass
+            
             if not session.get("authenticated"):
                 return [
                     gr.update(visible=True),
@@ -1741,7 +1919,7 @@ def create_game_asset_interface():
         generate_item_btn.click(
             fn=generate_item_wrapper,
             inputs=[item_description, item_art_style, item_mood, item_color_palette, item_line_style, item_composition, item_additional_notes, item_reference_image,
-                    item_image_width, item_image_height, item_lock_aspect_ratio, item_use_percentage, user_session_state],
+                    item_image_width, item_image_height, item_lock_aspect_ratio, item_use_percentage, user_session_state, token_input],
             outputs=[item_hero, item_output, item_status, token_display, last_image_preview, user_session_state]
         )
         
@@ -1750,9 +1928,26 @@ def create_game_asset_interface():
                                      sprite_color_palette, sprite_character_style, sprite_line_style, sprite_composition, 
                                      sprite_additional_notes, sprite_reference_image,
                                      sprite_image_width=None, sprite_image_height=None, sprite_lock_aspect_ratio=False, 
-                                     sprite_use_percentage=False, user_session=None):
+                                     sprite_use_percentage=False, user_session=None, access_token=None):
             """Sprites 생성하고 UI 업데이트"""
             session = user_session or _default_user_session()
+            
+            # 세션이 인증되지 않았지만 토큰이 있으면 직접 인증 시도
+            if not session.get("authenticated") and access_token and access_token.strip():
+                try:
+                    claims = validate_access_token(access_token.strip())
+                    user_id = claims.get("sub")
+                    if user_id:
+                        tokens = ensure_user_token_balance(user_id)
+                        session = {
+                            "authenticated": True,
+                            "user_id": user_id,
+                            "tokens": tokens,
+                            "access_token": access_token.strip(),
+                        }
+                except Exception:
+                    pass
+            
             if not session.get("authenticated"):
                 return [
                     gr.update(visible=True),
@@ -1854,13 +2049,30 @@ def create_game_asset_interface():
         generate_sprites_btn.click(
             fn=generate_sprites_wrapper,
             inputs=[sprite_character_description, actions_text, sprite_art_style, sprite_mood, sprite_color_palette, sprite_character_style, sprite_line_style, sprite_composition, sprite_additional_notes, sprite_reference_image,
-                    sprite_image_width, sprite_image_height, sprite_lock_aspect_ratio, sprite_use_percentage, user_session_state],
+                    sprite_image_width, sprite_image_height, sprite_lock_aspect_ratio, sprite_use_percentage, user_session_state, token_input],
             outputs=[sprites_hero, sprites_gallery, sprites_status, token_display, last_image_preview, user_session_state]
         )
 
         def generate_background_wrapper(background_description, orientation, bg_art_style, bg_mood, bg_color_palette, bg_line_style, bg_composition, bg_additional_notes,
-                                        bg_image_width=None, bg_image_height=None, bg_lock_aspect_ratio=False, bg_use_percentage=False, user_session=None):
+                                        bg_image_width=None, bg_image_height=None, bg_lock_aspect_ratio=False, bg_use_percentage=False, user_session=None, access_token=None):
             session = user_session or _default_user_session()
+            
+            # 세션이 인증되지 않았지만 토큰이 있으면 직접 인증 시도
+            if not session.get("authenticated") and access_token and access_token.strip():
+                try:
+                    claims = validate_access_token(access_token.strip())
+                    user_id = claims.get("sub")
+                    if user_id:
+                        tokens = ensure_user_token_balance(user_id)
+                        session = {
+                            "authenticated": True,
+                            "user_id": user_id,
+                            "tokens": tokens,
+                            "access_token": access_token.strip(),
+                        }
+                except Exception:
+                    pass
+            
             if not session.get("authenticated"):
                 return [
                     gr.update(visible=False),
@@ -1927,13 +2139,30 @@ def create_game_asset_interface():
         generate_background_btn.click(
             fn=generate_background_wrapper,
             inputs=[background_description, orientation, bg_art_style, bg_mood, bg_color_palette, bg_line_style, bg_composition, bg_additional_notes,
-                    bg_image_width, bg_image_height, bg_lock_aspect_ratio, bg_use_percentage, user_session_state],
+                    bg_image_width, bg_image_height, bg_lock_aspect_ratio, bg_use_percentage, user_session_state, token_input],
             outputs=[background_output, background_status, token_display, last_image_preview, user_session_state]
         )
         
         # Sprite Animation 이벤트 핸들러
-        def generate_animation_wrapper(reference_image, action_type, user_session):
+        def generate_animation_wrapper(reference_image, action_type, user_session, access_token=None):
             session = user_session or _default_user_session()
+            
+            # 세션이 인증되지 않았지만 토큰이 있으면 직접 인증 시도
+            if not session.get("authenticated") and access_token and access_token.strip():
+                try:
+                    claims = validate_access_token(access_token.strip())
+                    user_id = claims.get("sub")
+                    if user_id:
+                        tokens = ensure_user_token_balance(user_id)
+                        session = {
+                            "authenticated": True,
+                            "user_id": user_id,
+                            "tokens": tokens,
+                            "access_token": access_token.strip(),
+                        }
+                except Exception:
+                    pass
+            
             if not session.get("authenticated"):
                 return [
                     gr.update(value=[], visible=False),
@@ -1987,7 +2216,7 @@ def create_game_asset_interface():
 
         generate_sprite_btn.click(
             fn=generate_animation_wrapper,
-            inputs=[enhanced_sprite_reference_image, action_type_dropdown, user_session_state],
+            inputs=[enhanced_sprite_reference_image, action_type_dropdown, user_session_state, token_input],
             outputs=[sprite_gallery, sprite_status, token_display, last_image_preview, user_session_state]
         )
         
@@ -2013,22 +2242,29 @@ def create_game_asset_interface():
             outputs=[animation_info, frame_info]
         )
 
-        signup_button.click(
-            fn=handle_sign_up,
-            inputs=[login_email, login_password],
-            outputs=[auth_status]
-        )
-
-        login_button.click(
-            fn=handle_sign_in,
-            inputs=[login_email, login_password, user_session_state],
-            outputs=[auth_status, token_display, last_image_preview, login_overlay, user_meta_row, user_session_state]
-        )
+        # 로그인/회원가입 버튼 이벤트 제거 (Next.js에서 처리)
+        # signup_button.click(...) 제거
+        # login_button.click(...) 제거
 
         logout_button.click(
             fn=handle_sign_out,
             inputs=[user_session_state],
-            outputs=[auth_status, token_display, last_image_preview, login_overlay, user_meta_row, user_session_state]
+            outputs=[auth_status, token_display, last_image_preview, user_meta_row, user_session_state]
+        )
+        
+        # 자동 로그인 처리 (페이지 로드 시 최우선 실행)
+        demo.load(
+            fn=handle_auto_login_from_token,
+            inputs=[token_input],
+            outputs=[auth_status, token_display, last_image_preview, user_meta_row, user_session_state, token_input],
+            js="""
+            function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const token = urlParams.get('token') || '';
+                console.log('[Auto-login] Token from URL:', token ? 'Found' : 'Not found');
+                return [token];
+            }
+            """
         )
 
         demo.load(
