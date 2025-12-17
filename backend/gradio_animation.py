@@ -1,6 +1,7 @@
 """애니메이션 함수들"""
 
 import os
+import time
 import zipfile
 from PIL import Image
 from .pixel_character_generator import generate_pixel_character_interface

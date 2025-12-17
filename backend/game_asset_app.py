@@ -992,20 +992,20 @@ def create_game_asset_interface():
             """쿼리스트링의 토큰으로 자동 로그인 (UI 없이)"""
             print(f"[Auto-login] Function called with token: {token[:20] if token else 'None'}...")
             
-            # 항상 새로운 기본 세션으로 시작
-            session = _default_user_session()
-            
             if not token or token.strip() == "":
-                print("[Auto-login] No token provided")
-                # 토큰이 없으면 에러 메시지만 표시 (UI는 생성 탭 그대로)
+                print("[Auto-login] No token provided - keeping existing session")
+                # 토큰이 없으면 기존 세션 유지 (아무것도 변경하지 않음)
                 return (
-                    "⚠️ No authentication token. Please log in from the main page.",
-                    _token_component_update_from_state(session),
-                    _last_image_component_update_from_state(session),
-                    gr.update(visible=False),  # user_meta_row 숨기기
-                    session,
-                    ""  # token_input (빈 값)
+                    gr.update(),  # auth_status 변경 없음
+                    gr.update(),  # token_display 변경 없음
+                    gr.update(),  # last_image_preview 변경 없음
+                    gr.update(),  # user_meta_row 변경 없음
+                    gr.update(),  # user_session_state 변경 없음
+                    gr.update(),  # token_input 변경 없음
                 )
+            
+            # 토큰이 있을 때만 새 세션 시작
+            session = _default_user_session()
             
             try:
                 print(f"[Auto-login] Validating token...")
