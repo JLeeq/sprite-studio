@@ -907,14 +907,11 @@ def create_game_asset_interface():
         # gradio 5 uses the function gr.update(...) but does not expose a gr.Update type.
         # Using a dict return type here avoids an AttributeError at import time.
         def _token_component_update_from_state(session: Dict) -> Dict:
-            if session.get("authenticated"):
-                return gr.update(value=_format_token_text(session.get("tokens", 0)), visible=True)
-            return gr.update(value="Sign in to start generating assets.", visible=False)
+            # Always hidden - token display moved to Next.js frontend
+            return gr.update(value="", visible=False)
 
         def _last_image_component_update_from_state(session: Dict) -> Dict:
-            url = session.get("last_image_url")
-            if session.get("authenticated") and url:
-                return gr.update(value=url, visible=True)
+            # Always hidden - last image preview disabled
             return gr.update(value=None, visible=False)
 
         def handle_sign_up(email: str, password: str):
@@ -1042,7 +1039,7 @@ def create_game_asset_interface():
                     "",  # auth_status (빈 문자열 = 성공, 메시지 없음)
                     _token_component_update_from_state(updated_session),
                     _last_image_component_update_from_state(updated_session),
-                    gr.update(visible=True),   # user_meta_row 표시
+                    gr.update(visible=False),   # user_meta_row 숨기기 (Next.js에서 표시)
                     updated_session,
                     token.strip()  # token_input에 저장
                 )
