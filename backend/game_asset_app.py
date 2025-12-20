@@ -794,7 +794,7 @@ def create_game_asset_interface():
         
         // Send token update to parent window (if in iframe)
         function sendTokenUpdate(tokenCount) {
-            if (window.parent && window.parent !== window) {
+            if (window.parent && window.parent !== window && tokenCount !== null) {
                 window.parent.postMessage({
                     type: 'token-updated',
                     tokens: tokenCount
@@ -811,16 +811,60 @@ def create_game_asset_interface():
             }
         }
         
-        // Monitor token display updates
+        // Get token count from Gradio component value (even if hidden)
+        function getTokenFromComponent() {
+            // Try to find token display component by ID pattern
+            const tokenComponent = document.querySelector('[id*="token-display"], [id*="token_display"]');
+            if (tokenComponent) {
+                // Try to get value from Gradio component's internal state
+                const gradioApp = document.querySelector('gradio-app');
+                if (gradioApp && gradioApp.__gradio_app__) {
+                    try {
+                        // Access Gradio's component registry
+                        const components = gradioApp.__gradio_app__.get_components();
+                        for (let comp of components) {
+                            if (comp.props && comp.props.elem_id && comp.props.elem_id.includes('token')) {
+                                const value = comp.props.value || comp.value;
+                                if (value) {
+                                    const tokenCount = extractTokenCount(value);
+                                    if (tokenCount !== null) {
+                                        return tokenCount;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.log('[Token Update] Could not access Gradio components:', e);
+                    }
+                }
+                // Fallback: try to read from text content
+                const text = tokenComponent.textContent || tokenComponent.innerText || '';
+                return extractTokenCount(text);
+            }
+            return null;
+        }
+        
+        // Monitor token display updates and Gradio component changes
         function observeTokenDisplay() {
+            let lastTokenCount = null;
+            
             const observer = new MutationObserver(function(mutations) {
                 mutations.forEach(function(mutation) {
                     if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                        // Try to get token from component
+                        const tokenCount = getTokenFromComponent();
+                        if (tokenCount !== null && tokenCount !== lastTokenCount) {
+                            lastTokenCount = tokenCount;
+                            sendTokenUpdate(tokenCount);
+                        }
+                        
+                        // Also try to find visible token elements
                         const tokenElements = document.querySelectorAll('[id*="token"], .token-display, markdown');
                         tokenElements.forEach(function(el) {
                             const text = el.textContent || el.innerText || '';
                             const tokenCount = extractTokenCount(text);
-                            if (tokenCount !== null) {
+                            if (tokenCount !== null && tokenCount !== lastTokenCount) {
+                                lastTokenCount = tokenCount;
                                 sendTokenUpdate(tokenCount);
                             }
                         });
@@ -831,19 +875,59 @@ def create_game_asset_interface():
             observer.observe(document.body, {
                 childList: true,
                 subtree: true,
-                characterData: true
+                characterData: true,
+                attributes: true,
+                attributeFilter: ['value', 'data-value']
             });
             
+            // Poll for token updates (fallback method)
             setInterval(function() {
+                const tokenCount = getTokenFromComponent();
+                if (tokenCount !== null && tokenCount !== lastTokenCount) {
+                    lastTokenCount = tokenCount;
+                    sendTokenUpdate(tokenCount);
+                }
+                
+                // Also check visible elements
                 const tokenElements = document.querySelectorAll('[id*="token"], .token-display, markdown');
                 tokenElements.forEach(function(el) {
                     const text = el.textContent || el.innerText || '';
                     const tokenCount = extractTokenCount(text);
+                    if (tokenCount !== null && tokenCount !== lastTokenCount) {
+                        lastTokenCount = tokenCount;
+                        sendTokenUpdate(tokenCount);
+                    }
+                });
+            }, 500);
+        }
+        
+        // Listen for Gradio component updates
+        function setupGradioListener() {
+            // Listen for custom events or Gradio updates
+            document.addEventListener('gradio:component-update', function(e) {
+                if (e.detail && e.detail.id && e.detail.id.includes('token')) {
+                    const tokenCount = extractTokenCount(e.detail.value || '');
+                    if (tokenCount !== null) {
+                        sendTokenUpdate(tokenCount);
+                    }
+                }
+            });
+            
+            // Monitor Gradio app updates
+            const gradioApp = document.querySelector('gradio-app');
+            if (gradioApp) {
+                const observer = new MutationObserver(function() {
+                    const tokenCount = getTokenFromComponent();
                     if (tokenCount !== null) {
                         sendTokenUpdate(tokenCount);
                     }
                 });
-            }, 1000);
+                observer.observe(gradioApp, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true
+                });
+            }
         }
         
         // Initialize when DOM is ready
@@ -854,6 +938,7 @@ def create_game_asset_interface():
             setTimeout(ensureUserMetaRowVisible, 500);
             
             observeTokenDisplay();
+            setupGradioListener();
         }
         
         if (document.readyState === 'loading') {
@@ -866,6 +951,7 @@ def create_game_asset_interface():
         window.addEventListener('load', function() {
             setTimeout(ensureUserMetaRowVisible, 100);
             setTimeout(ensureUserMetaRowVisible, 500);
+            setTimeout(init, 1000); // Re-initialize after Gradio loads
         });
     })();
     </script>
@@ -907,8 +993,9 @@ def create_game_asset_interface():
         # gradio 5 uses the function gr.update(...) but does not expose a gr.Update type.
         # Using a dict return type here avoids an AttributeError at import time.
         def _token_component_update_from_state(session: Dict) -> Dict:
-            # Always hidden - token display moved to Next.js frontend
-            return gr.update(value="", visible=False)
+            # Hidden but value is updated so JavaScript can read it
+            tokens = session.get("tokens", 0)
+            return gr.update(value=_format_token_text(tokens), visible=False)
 
         def _last_image_component_update_from_state(session: Dict) -> Dict:
             # Always hidden - last image preview disabled
@@ -1794,6 +1881,19 @@ def create_game_asset_interface():
                     line_style, composition, additional_notes, character_reference_image, item_reference_image,
                     char_image_width, char_image_height, char_lock_aspect_ratio, char_use_percentage, user_session_state, token_input],
             outputs=[welcome_text, character_output, character_status, char_advanced_settings, token_display, last_image_preview, user_session_state]
+        ).then(
+            fn=None,
+            inputs=[user_session_state],
+            js="""
+            function(session) {
+                if (session && session.tokens !== undefined && window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'token-updated',
+                        tokens: session.tokens
+                    }, '*');
+                }
+            }
+            """
         )
         
         # 생성 버튼 이벤트 핸들러
@@ -1803,6 +1903,19 @@ def create_game_asset_interface():
                     line_style, composition, additional_notes, character_reference_image, item_reference_image,
                     char_image_width, char_image_height, char_lock_aspect_ratio, char_use_percentage, user_session_state, token_input],
             outputs=[welcome_text, character_output, character_status, char_advanced_settings, token_display, last_image_preview, user_session_state]
+        ).then(
+            fn=None,
+            inputs=[user_session_state],
+            js="""
+            function(session) {
+                if (session && session.tokens !== undefined && window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'token-updated',
+                        tokens: session.tokens
+                    }, '*');
+                }
+            }
+            """
         )
         
         # Item 생성 래퍼 함수 (UI 업데이트 포함)
@@ -1918,6 +2031,19 @@ def create_game_asset_interface():
             inputs=[item_description, item_art_style, item_mood, item_color_palette, item_line_style, item_composition, item_additional_notes, item_reference_image,
                     item_image_width, item_image_height, item_lock_aspect_ratio, item_use_percentage, user_session_state, token_input],
             outputs=[item_hero, item_output, item_status, token_display, last_image_preview, user_session_state]
+        ).then(
+            fn=None,
+            inputs=[user_session_state],
+            js="""
+            function(session) {
+                if (session && session.tokens !== undefined && window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'token-updated',
+                        tokens: session.tokens
+                    }, '*');
+                }
+            }
+            """
         )
         
         # Sprites 생성 래퍼 함수 (UI 업데이트 포함)
@@ -2048,6 +2174,19 @@ def create_game_asset_interface():
             inputs=[sprite_character_description, actions_text, sprite_art_style, sprite_mood, sprite_color_palette, sprite_character_style, sprite_line_style, sprite_composition, sprite_additional_notes, sprite_reference_image,
                     sprite_image_width, sprite_image_height, sprite_lock_aspect_ratio, sprite_use_percentage, user_session_state, token_input],
             outputs=[sprites_hero, sprites_gallery, sprites_status, token_display, last_image_preview, user_session_state]
+        ).then(
+            fn=None,
+            inputs=[user_session_state],
+            js="""
+            function(session) {
+                if (session && session.tokens !== undefined && window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'token-updated',
+                        tokens: session.tokens
+                    }, '*');
+                }
+            }
+            """
         )
 
         def generate_background_wrapper(background_description, orientation, bg_art_style, bg_mood, bg_color_palette, bg_line_style, bg_composition, bg_additional_notes,
@@ -2138,6 +2277,19 @@ def create_game_asset_interface():
             inputs=[background_description, orientation, bg_art_style, bg_mood, bg_color_palette, bg_line_style, bg_composition, bg_additional_notes,
                     bg_image_width, bg_image_height, bg_lock_aspect_ratio, bg_use_percentage, user_session_state, token_input],
             outputs=[background_output, background_status, token_display, last_image_preview, user_session_state]
+        ).then(
+            fn=None,
+            inputs=[user_session_state],
+            js="""
+            function(session) {
+                if (session && session.tokens !== undefined && window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'token-updated',
+                        tokens: session.tokens
+                    }, '*');
+                }
+            }
+            """
         )
         
         # Sprite Animation 이벤트 핸들러

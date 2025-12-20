@@ -9,11 +9,30 @@ interface HeaderProps {
   session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] | null;
   tokens: number | null;
   onSignOut: () => void;
+  showUpgradeModal?: boolean;
+  onUpgradeModalChange?: (show: boolean) => void;
 }
 
-export function Header({ session, tokens, onSignOut }: HeaderProps) {
+export function Header({ session, tokens, onSignOut, showUpgradeModal: externalShowModal, onUpgradeModalChange }: HeaderProps) {
   const [isClient, setIsClient] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [internalShowModal, setInternalShowModal] = useState(false);
+
+  // Use external control if provided, otherwise use internal state
+  const showUpgradeModal = externalShowModal !== undefined ? externalShowModal : internalShowModal;
+  const setShowUpgradeModal = (show: boolean) => {
+    if (onUpgradeModalChange) {
+      onUpgradeModalChange(show);
+    } else {
+      setInternalShowModal(show);
+    }
+  };
+
+  // Sync external prop changes to internal state
+  useEffect(() => {
+    if (externalShowModal !== undefined) {
+      setInternalShowModal(externalShowModal);
+    }
+  }, [externalShowModal]);
 
   useEffect(() => {
     setIsClient(true);

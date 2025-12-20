@@ -12,6 +12,7 @@ export default function StudioPage() {
   const [session, setSession] = useState<Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] | null>(null);
   const [tokens, setTokens] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -54,6 +55,13 @@ export default function StudioPage() {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
+  // 토큰이 10개 이하일 때 자동으로 업그레이드 모달 표시
+  useEffect(() => {
+    if (tokens !== null && tokens <= 10 && tokens > 0) {
+      setShowUpgradeModal(true);
+    }
+  }, [tokens]);
+
   const fetchProfile = async (accessToken: string) => {
     try {
       const res = await fetch(`${API_BASE}/profile`, {
@@ -90,7 +98,13 @@ export default function StudioPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header session={session} tokens={tokens} onSignOut={handleSignOut} />
+      <Header 
+        session={session} 
+        tokens={tokens} 
+        onSignOut={handleSignOut}
+        showUpgradeModal={showUpgradeModal}
+        onUpgradeModalChange={setShowUpgradeModal}
+      />
       <div className="flex-1">
         <iframe
           src={gradioUrl}
