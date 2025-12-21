@@ -1759,6 +1759,7 @@ def create_game_asset_interface():
                 ]
 
             if not character_description or not character_description.strip():
+                print("[Generate Character] Error: character_description is empty")
                 return [
                     gr.update(visible=True),  # welcome_text
                     gr.update(visible=False),  # character_output
@@ -1769,6 +1770,8 @@ def create_game_asset_interface():
                     session,
                 ]
             
+            print(f"[Generate Character] Starting image generation. character_mode={character_mode}, description_length={len(character_description)}")
+            
             def _sanitize_pref(value):
                 if not value:
                     return None
@@ -1778,7 +1781,8 @@ def create_game_asset_interface():
                 return value
             
             # 이미지 생성 (character_mode는 이제 boolean)
-            if character_mode is True:  # Pixel Mode가 명확히 체크되어 있으면
+            try:
+                if character_mode is True:  # Pixel Mode가 명확히 체크되어 있으면
                 # 스타일 요약을 설명에 포함
                 style_parts = []
                 pref_map = [
@@ -1803,13 +1807,16 @@ def create_game_asset_interface():
                     pixel_description += f"\nAdditional notes: {additional_notes_clean}"
                 
                 # Pixel generator에 reference images 전달
+                print(f"[Generate Character] Calling generate_pixel_character with description length: {len(pixel_description)}")
                 status, img_path = generate_pixel_character(
                     pixel_description,
                     character_reference_image,
                     item_reference_image
                 )
+                print(f"[Generate Character] generate_pixel_character returned: status={status}, img_path={img_path}")
             else:
                 # Normal Mode: 기존 generate_character_interface 호출 (pixel mode가 명확히 False일 때만)
+                print(f"[Generate Character] Calling generate_character_interface (char_image_width={char_image_width})")
                 if char_image_width:
                     img_path, status = generate_character_interface(
                         character_description, art_style, mood, color_palette, character_style, 
@@ -1821,6 +1828,7 @@ def create_game_asset_interface():
                         character_description, art_style, mood, color_palette, character_style, 
                         line_style, composition, additional_notes, character_reference_image, item_reference_image
                     )
+                print(f"[Generate Character] generate_character_interface returned: status={status}, img_path={img_path}")
             
             # 이미지가 생성되었으면 welcome_text 숨기고 이미지 표시
             token_update = _token_component_update_from_state(session)
@@ -1866,6 +1874,20 @@ def create_game_asset_interface():
                     gr.update(open=False),  # char_advanced_settings 닫기
                     token_update,
                     last_image_update,
+                    session,
+                ]
+            except Exception as e:
+                error_msg = f"❌ Error generating character: {str(e)}"
+                print(f"[Generate Character] Exception occurred: {error_msg}")
+                import traceback
+                traceback.print_exc()
+                return [
+                    gr.update(visible=True),  # welcome_text
+                    gr.update(visible=False),  # character_output
+                    error_msg,
+                    gr.update(open=False),  # char_advanced_settings 닫기
+                    _token_component_update_from_state(session),
+                    _last_image_component_update_from_state(session),
                     session,
                 ]
         
