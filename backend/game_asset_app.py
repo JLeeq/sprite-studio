@@ -1783,99 +1783,99 @@ def create_game_asset_interface():
             # 이미지 생성 (character_mode는 이제 boolean)
             try:
                 if character_mode is True:  # Pixel Mode가 명확히 체크되어 있으면
-                # 스타일 요약을 설명에 포함
-                style_parts = []
-                pref_map = [
-                    ("Art Style", art_style),
-                    ("Mood", mood),
-                    ("Color Palette", color_palette),
-                    ("Character Style", character_style),
-                    ("Line Style", line_style),
-                    ("Composition", composition),
-                ]
-                for label, val in pref_map:
-                    clean = _sanitize_pref(val)
-                    if clean:
-                        style_parts.append(f"{label}: {clean}")
-                
-                additional_notes_clean = _sanitize_pref(additional_notes)
-                
-                pixel_description = character_description.strip()
-                if style_parts:
-                    pixel_description += "\nStyle preferences: " + ", ".join(style_parts)
-                if additional_notes_clean:
-                    pixel_description += f"\nAdditional notes: {additional_notes_clean}"
-                
-                # Pixel generator에 reference images 전달
-                print(f"[Generate Character] Calling generate_pixel_character with description length: {len(pixel_description)}")
-                status, img_path = generate_pixel_character(
-                    pixel_description,
-                    character_reference_image,
-                    item_reference_image
-                )
-                print(f"[Generate Character] generate_pixel_character returned: status={status}, img_path={img_path}")
-            else:
-                # Normal Mode: 기존 generate_character_interface 호출 (pixel mode가 명확히 False일 때만)
-                print(f"[Generate Character] Calling generate_character_interface (char_image_width={char_image_width})")
-                if char_image_width:
-                    img_path, status = generate_character_interface(
-                        character_description, art_style, mood, color_palette, character_style, 
-                        line_style, composition, additional_notes, character_reference_image, item_reference_image,
-                        char_image_width, char_image_height, char_lock_aspect_ratio, char_use_percentage
+                    # 스타일 요약을 설명에 포함
+                    style_parts = []
+                    pref_map = [
+                        ("Art Style", art_style),
+                        ("Mood", mood),
+                        ("Color Palette", color_palette),
+                        ("Character Style", character_style),
+                        ("Line Style", line_style),
+                        ("Composition", composition),
+                    ]
+                    for label, val in pref_map:
+                        clean = _sanitize_pref(val)
+                        if clean:
+                            style_parts.append(f"{label}: {clean}")
+                    
+                    additional_notes_clean = _sanitize_pref(additional_notes)
+                    
+                    pixel_description = character_description.strip()
+                    if style_parts:
+                        pixel_description += "\nStyle preferences: " + ", ".join(style_parts)
+                    if additional_notes_clean:
+                        pixel_description += f"\nAdditional notes: {additional_notes_clean}"
+                    
+                    # Pixel generator에 reference images 전달
+                    print(f"[Generate Character] Calling generate_pixel_character with description length: {len(pixel_description)}")
+                    status, img_path = generate_pixel_character(
+                        pixel_description,
+                        character_reference_image,
+                        item_reference_image
                     )
+                    print(f"[Generate Character] generate_pixel_character returned: status={status}, img_path={img_path}")
                 else:
-                    img_path, status = generate_character_interface(
-                        character_description, art_style, mood, color_palette, character_style, 
-                        line_style, composition, additional_notes, character_reference_image, item_reference_image
-                    )
-                print(f"[Generate Character] generate_character_interface returned: status={status}, img_path={img_path}")
-            
-            # 이미지가 생성되었으면 welcome_text 숨기고 이미지 표시
-            token_update = _token_component_update_from_state(session)
-            last_image_update = _last_image_component_update_from_state(session)
+                    # Normal Mode: 기존 generate_character_interface 호출 (pixel mode가 명확히 False일 때만)
+                    print(f"[Generate Character] Calling generate_character_interface (char_image_width={char_image_width})")
+                    if char_image_width:
+                        img_path, status = generate_character_interface(
+                            character_description, art_style, mood, color_palette, character_style, 
+                            line_style, composition, additional_notes, character_reference_image, item_reference_image,
+                            char_image_width, char_image_height, char_lock_aspect_ratio, char_use_percentage
+                        )
+                    else:
+                        img_path, status = generate_character_interface(
+                            character_description, art_style, mood, color_palette, character_style, 
+                            line_style, composition, additional_notes, character_reference_image, item_reference_image
+                        )
+                    print(f"[Generate Character] generate_character_interface returned: status={status}, img_path={img_path}")
+                
+                # 이미지가 생성되었으면 welcome_text 숨기고 이미지 표시
+                token_update = _token_component_update_from_state(session)
+                last_image_update = _last_image_component_update_from_state(session)
 
-            if img_path:
-                try:
-                    remaining = consume_user_token(session["user_id"])
-                    session["tokens"] = remaining
-                    metadata = {
-                        "description": character_description,
-                        "pixel_mode": bool(character_mode),
-                        "art_style": art_style,
-                        "mood": mood,
-                        "color_palette": color_palette,
-                    }
-                    public_url = record_generated_image(
-                        session["user_id"],
-                        "character",
-                        img_path,
-                        metadata=metadata,
-                    )
-                    session["last_image_url"] = public_url
-                    token_update = gr.update(value=_format_token_text(remaining), visible=True)
-                    last_image_update = gr.update(value=public_url, visible=True)
-                except Exception as logging_error:  # noqa: BLE001
-                    print(f"[Character] Failed to record image: {logging_error}")
+                if img_path:
+                    try:
+                        remaining = consume_user_token(session["user_id"])
+                        session["tokens"] = remaining
+                        metadata = {
+                            "description": character_description,
+                            "pixel_mode": bool(character_mode),
+                            "art_style": art_style,
+                            "mood": mood,
+                            "color_palette": color_palette,
+                        }
+                        public_url = record_generated_image(
+                            session["user_id"],
+                            "character",
+                            img_path,
+                            metadata=metadata,
+                        )
+                        session["last_image_url"] = public_url
+                        token_update = gr.update(value=_format_token_text(remaining), visible=True)
+                        last_image_update = gr.update(value=public_url, visible=True)
+                    except Exception as logging_error:  # noqa: BLE001
+                        print(f"[Character] Failed to record image: {logging_error}")
 
-                return [
-                    gr.update(visible=False),  # welcome_text
-                    gr.update(value=img_path, visible=True),  # character_output
-                    status,
-                    gr.update(open=False),  # char_advanced_settings 닫기
-                    token_update,
-                    last_image_update,
-                    session,
-                ]
-            else:
-                return [
-                    gr.update(visible=True),  # welcome_text
-                    gr.update(visible=False),  # character_output
-                    status,
-                    gr.update(open=False),  # char_advanced_settings 닫기
-                    token_update,
-                    last_image_update,
-                    session,
-                ]
+                    return [
+                        gr.update(visible=False),  # welcome_text
+                        gr.update(value=img_path, visible=True),  # character_output
+                        status,
+                        gr.update(open=False),  # char_advanced_settings 닫기
+                        token_update,
+                        last_image_update,
+                        session,
+                    ]
+                else:
+                    return [
+                        gr.update(visible=True),  # welcome_text
+                        gr.update(visible=False),  # character_output
+                        status,
+                        gr.update(open=False),  # char_advanced_settings 닫기
+                        token_update,
+                        last_image_update,
+                        session,
+                    ]
             except Exception as e:
                 error_msg = f"❌ Error generating character: {str(e)}"
                 print(f"[Generate Character] Exception occurred: {error_msg}")
