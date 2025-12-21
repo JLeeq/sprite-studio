@@ -2408,10 +2408,32 @@ def create_game_asset_interface():
             outputs=[auth_status, token_display, last_image_preview, user_meta_row, user_session_state, token_input],
             js="""
             function() {
-                const urlParams = new URLSearchParams(window.location.search);
-                const token = urlParams.get('token') || '';
-                console.log('[Auto-login] Token from URL:', token ? 'Found' : 'Not found');
-                return [token];
+                // 여러 방법으로 토큰 읽기 시도
+                let token = '';
+                
+                // 방법 1: URLSearchParams 사용
+                try {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    token = urlParams.get('token') || '';
+                } catch (e) {
+                    console.error('[Auto-login] Error reading URL params:', e);
+                }
+                
+                // 방법 2: 전체 URL에서 직접 추출 (fallback)
+                if (!token) {
+                    try {
+                        const url = window.location.href;
+                        const match = url.match(/[?&]token=([^&]+)/);
+                        if (match) {
+                            token = decodeURIComponent(match[1]);
+                        }
+                    } catch (e) {
+                        console.error('[Auto-login] Error extracting from URL:', e);
+                    }
+                }
+                
+                console.log('[Auto-login] Token from URL:', token ? 'Found (' + token.substring(0, 20) + '...)' : 'Not found');
+                return token;  // 배열이 아닌 단일 값 반환
             }
             """
         )
