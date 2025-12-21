@@ -28,8 +28,7 @@ class PixelCharacterGenerator:
             print("Please set your API key in .env file: GEMINI_API_KEY=your_key_here")
             raise ValueError("GEMINI_API_KEY is required but not found.")
         
-        # Debug: Print API key status
-        print(f"🔑 API Key loaded: {self.api_key[:10]}..." if self.api_key else "❌ No API key found")
+        # API key loaded (not logging to prevent leaks)
         
         self.output_dir = os.getenv("OUTPUT_DIR", "data/output")
         self.image_gen_model_name = os.getenv("IMAGE_MODEL_NAME", "gemini-2.5-flash-image-preview")

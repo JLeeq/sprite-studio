@@ -24,7 +24,7 @@ class GameAssetGenerator:
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY is required but not found.")
 
-        print(f"🔑 API Key loaded: {self.api_key[:10]}...")
+        # API key loaded (not logging to prevent leaks)
 
         self.output_dir = os.getenv("OUTPUT_DIR", "data/output")
         self.character_dir = os.path.join(self.output_dir, "characters")
