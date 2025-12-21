@@ -49,19 +49,26 @@ export function Header({ session, tokens, onSignOut, showUpgradeModal: externalS
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-4">
             <h1 className="pixel-font text-lg font-semibold text-black">Sprite Studio</h1>
-            {tokens !== null && (
-              <div className="flex items-center gap-2">
-                <div className="rounded-full bg-[var(--enhanced-accent)] px-4 py-1 text-sm font-semibold text-white">
-                  Tokens: {tokens}
+            {/* tokens가 로드되면 항상 표시 */}
+            <div className="flex items-center gap-2">
+              {tokens !== null ? (
+                <>
+                  <div className="rounded-full bg-[var(--enhanced-accent)] px-4 py-1 text-sm font-semibold text-white">
+                    Tokens: {tokens}
+                  </div>
+                  <button
+                    onClick={() => setShowUpgradeModal(true)}
+                    className="rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-1 text-sm font-semibold text-white hover:from-purple-700 hover:to-indigo-700 transition-all"
+                  >
+                    Upgrade
+                  </button>
+                </>
+              ) : (
+                <div className="rounded-full bg-gray-300 px-4 py-1 text-sm font-semibold text-gray-600">
+                  Loading...
                 </div>
-                <button
-                  onClick={() => setShowUpgradeModal(true)}
-                  className="rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-1 text-sm font-semibold text-white hover:from-purple-700 hover:to-indigo-700 transition-all"
-                >
-                  Upgrade
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-700">{session.user?.email}</span>

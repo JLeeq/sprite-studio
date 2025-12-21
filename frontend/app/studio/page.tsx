@@ -10,7 +10,7 @@ const GRADIO_URL = process.env.NEXT_PUBLIC_GRADIO_URL ?? "http://localhost:7861"
 
 export default function StudioPage() {
   const [session, setSession] = useState<Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] | null>(null);
-  const [tokens, setTokens] = useState<number | null>(null);
+  const [tokens, setTokens] = useState<number | null>(null); // Supabase에서 가져올 때까지 null
   const [isLoading, setIsLoading] = useState(true);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const router = useRouter();
@@ -47,7 +47,10 @@ export default function StudioPage() {
       // if (event.origin !== "https://studio.yourdomain.com") return;
       
       if (event.data?.type === "token-updated") {
-        setTokens(event.data.tokens);
+        console.log("[token-updated] Received tokens:", event.data.tokens);
+        if (event.data.tokens !== undefined && event.data.tokens !== null) {
+          setTokens(event.data.tokens);
+        }
       }
     };
 
@@ -69,10 +72,15 @@ export default function StudioPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setTokens(data.tokens ?? 0);
+        // Supabase에서 가져온 실제 토큰 값 설정
+        setTokens(data.tokens ?? null);
+      } else {
+        console.error("[profile] Failed to fetch:", res.status);
+        // 실패해도 null 유지 (재시도 가능)
       }
     } catch (error) {
       console.error("[profile]", error);
+      // 에러 발생 시에도 null 유지 (재시도 가능)
     }
   };
 
