@@ -49,6 +49,7 @@ def create_app() -> FastAPI:
         # Production
         "https://sprite-studio.com",
         "https://www.sprite-studio.com",
+        "https://main.d10zah5or4k8a.amplifyapp.com",  # Amplify 기본 URL
     ]
     
     # Add production origins from environment variable
