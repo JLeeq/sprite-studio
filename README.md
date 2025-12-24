@@ -2,10 +2,10 @@
 
 AI-powered 2D game asset generation tool! Create characters, backgrounds, items, and all the assets you need for 2D games using Google's Gemini AI models.
 
-Live Demo: https://sprite-studio.com/
-Play Game Here: https://gd.games/games/feac74c4-ee1a-4858-949b-bea628e5a081
-LinkedIn: https://www.linkedin.com/in/jianleee/
-More Detail: https://www.linkedin.com/posts/jianleee_indie-and-solo-game-developers-often-spend-activity-7409553353351032833-IhEY?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEuJUtMBpdDPXXm7UTo9Z0abB5vcvXUFdxA
+- Live Demo: https://sprite-studio.com/
+- Play Game Here: https://gd.games/games/feac74c4-ee1a-4858-949b-bea628e5a081
+- LinkedIn: https://www.linkedin.com/in/jianleee/
+- More Detail: https://www.linkedin.com/posts/jianleee_indie-and-solo-game-developers-often-spend-activity-7409553353351032833-IhEY?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEuJUtMBpdDPXXm7UTo9Z0abB5vcvXUFdxA
 
 ## 🏗️ Architecture
 
