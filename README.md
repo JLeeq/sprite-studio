@@ -1,15 +1,67 @@
-# 2D Game Asset Generator 🎮✨
+# 2D Game Asset Generator
 
 AI-powered 2D game asset generation tool! Create characters, backgrounds, items, and all the assets you need for 2D games using Google's Gemini AI models.
 
-## 🌟 Key Features
+Live Demo: https://sprite-studio.com/
+Play Game Here: https://gd.games/games/feac74c4-ee1a-4858-949b-bea628e5a081
+LinkedIn: https://www.linkedin.com/in/jianleee/
+More Detail: https://www.linkedin.com/posts/jianleee_indie-and-solo-game-developers-often-spend-activity-7409553353351032833-IhEY?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEuJUtMBpdDPXXm7UTo9Z0abB5vcvXUFdxA
 
-- **🎨 AI-Powered Generation**: Automatically generate characters, backgrounds, and items with AI
-- **🎭 Style Customization**: Various art styles, moods, color palettes, and composition options
-- **🏃 Sprite Generation**: Batch generate multiple action sprites for characters
-- **⚙️ Configuration Management**: Save and reuse frequently used style settings
-- **🖼️ Reference Images**: Upload reference images for consistent character design
-- **🖥️ Web Interface**: User-friendly Gradio interface
+## 🏗️ Architecture
+
+### Hybrid Architecture
+
+This project implements a unique hybrid architecture that leverages the strengths of multiple frameworks:
+
+- **Next.js Frontend** (`frontend/`): Modern React-based dashboard with authentication, token management, and user interface
+- **FastAPI Backend** (`backend/api_server.py`): RESTful API for profile management, token operations, and image generation endpoints
+- **Gradio Interface** (`backend/game_asset_app.py`): Embedded iframe-based generation studio with rich UI components
+- **Supabase**: Authentication, database (PostgreSQL), and file storage
+- **AWS Infrastructure**: Amplify (frontend hosting), EC2 (backend hosting), Route 53 (DNS)
+
+### Architecture Flow
+
+1. User authenticates via Next.js frontend using Supabase Auth (Google OAuth supported)
+2. JWT token is passed to Gradio iframe via URL query string (`?token=...`)
+3. Gradio auto-login extracts token from URL and validates with Supabase
+4. Token balance is polled every 5 seconds via FastAPI `/profile` endpoint
+5. Image generation consumes tokens and updates balance in real-time
+6. Generated images are stored in Supabase Storage and metadata saved to PostgreSQL
+
+### Key Design Decisions
+
+- **Token-based Billing**: Each image generation consumes 1 token. New users start with 10 tokens.
+- **Real-time Updates**: 5-second polling ensures token balance reflects immediately after generation
+- **Session Sharing**: JWT tokens shared between Next.js and Gradio via URL parameters
+- **Security**: API keys never logged, CORS properly configured, environment variables secured
+
+## 🚀 Tech Stack
+
+### Frontend
+- **Next.js 14** (App Router)
+- **TypeScript**
+- **Tailwind CSS**
+- **Supabase Client** (authentication)
+
+### Backend
+- **FastAPI** (REST API)
+- **Gradio 5.44+** (generation interface)
+- **Python 3.11+**
+- **Supabase Python Client** (database, storage, auth validation)
+
+### Infrastructure
+- **AWS Amplify** (frontend hosting, CI/CD)
+- **AWS EC2** (backend hosting)
+- **AWS Route 53** (DNS management)
+- **Supabase** (PostgreSQL, Storage, Auth)
+
+### AI/ML
+- **Google Gemini API** (image generation)
+- **Gemini 2.5 Flash Image Preview** (model)
+
+
+
+
 
 ## 🚀 Quick Start
 
@@ -65,59 +117,81 @@ AI-powered 2D game asset generation tool! Create characters, backgrounds, items,
 3. Upload reference image (optional)
 4. Click "Generate Character" button
 
-### 🏃 **Character Sprite Generation**
+## Key Features
 
-1. Enter character description
-2. Enter action list separated by commas (e.g., idle, walk, run, jump)
-3. Select style preferences
-4. Click "Generate Sprites" button
+### Token Management
+- Initial Tokens: New users receive 10 tokens upon signup
+- Real-time Updates: Token balance updates every 5 seconds via FastAPI polling
+- Auto-deduction: Tokens automatically consumed on image generation
+- Low Token Warning: Upgrade modal appears when tokens ≤ 10
+### Image Generation
+- Character Generation: Create unique characters with style customization
+- Sprite Animation: Generate animated sprite sheets (walk, run, jump, attack, etc.)
+- Background Design: Create immersive game backgrounds
+- Item Generation: Generate weapons, armor, potions, and game items
+- Pixel Art Mode: Toggle for retro-style pixel art generation
+### User Experience
+- Google OAuth: One-click sign-in with Google
+- Session Persistence: JWT tokens maintain authentication across page reloads
+- Responsive Design: Modern UI with Tailwind CSS
+- Real-time Feedback: Loading states and error handling
 
-### 🌄 **Background Generation**
+# Development Journey
+## Major Challenges Solved
+### 1. Hybrid Architecture Integration
+- Implemented JWT token sharing between Next.js and Gradio via URL query strings
+- Resolved cross-origin communication issues
+- Optimized token synchronization (moved from postMessage to FastAPI polling)
+### 2. Production Deployment
+- Configured AWS Amplify for Next.js SSR deployment
+- Set up EC2 instance with proper security groups
+- Resolved CORS issues by adding Amplify URL to allowed origins
+- Implemented service restart procedures
+### 3. Security Issues
+- Identified and fixed API key exposure in logs
+- Removed sensitive data from console output
+- Implemented proper environment variable handling
+### 4. Database Schema
+- Created Supabase tables: user_tokens, user_projects, generated_images
+- Implemented Row Level Security (RLS) policies
+- Fixed missing table errors in production
+### 5. Real-time Token Updates
+- Implemented 5-second polling for token balance
+- Added proper error handling and loading states
+- Ensured UI reflects token changes immediately after generation
+### 6. Image Generation Debugging
+- Added comprehensive logging for generation pipeline
+- Fixed JavaScript token extraction in Gradio auto-login
+- Resolved API key permission issues
 
-1. Enter background description
-2. Select orientation (landscape/portrait)
-3. Select style preferences
-4. Click "Generate Background" button
-
-### 🎒 **Item Generation**
-
-1. Enter item description
-2. Select style preferences
-3. Upload reference image (optional)
-4. Click "Generate Item" button
-
-### ⚙️ **Configuration Management**
-
-1. Save frequently used style settings
-2. Load and reuse saved settings
-3. Delete unnecessary settings
 
 ## 🏗️ Project Structure
 
 ```
-Sprite_generator/
+sprite-studio/
 ├── backend/
-│   ├── api_server.py            # FastAPI endpoints (Next.js consumes these)
-│   ├── game_asset_app.py        # Legacy Gradio interface
-│   ├── game_asset_generator.py  # Core game asset generation logic
+│   ├── api_server.py              # FastAPI REST API
+│   ├── game_asset_app.py          # Gradio generation interface
+│   ├── game_asset_generator.py    # Core generation logic
 │   ├── pixel_character_generator.py
-│   ├── supabase_client.py       # Supabase helpers (auth/tokens/storage)
-│   ├── config_manager.py        # Configuration management module
-│   └── utils.py                 # Shared style data/constants
-├── frontend/                    # Next.js application
-├── pyproject.toml               # Project configuration
-├── .env                         # Environment variables (create this)
-├── data/
-│   ├── output/                  # Generated assets
-│   │   ├── characters/          # Character images
-│   │   ├── backgrounds/         # Background images
-│   │   ├── items/               # Item images
-│   │   └── references/          # Reference images
-│   ├── configs/                 # Saved configurations
-│   │   └── saved_configs.json
-│   └── examples/                # Example files
+│   ├── supabase_client.py         # Supabase helpers (auth/tokens/storage)
+│   ├── config_manager.py          # Configuration management
+│   ├── gradio_*.py                # Gradio UI components
+│   └── utils.py                   # Shared utilities
+├── frontend/
+│   ├── app/                       # Next.js App Router
+│   │   ├── studio/               # Studio page with Gradio iframe
+│   │   └── page.tsx              # Landing page
+│   ├── components/               # React components
+│   │   └── Header.tsx            # Header with token display
+│   └── lib/                      # Utilities
+│       └── supabase.ts           # Supabase client
+├── supabase_schema.sql            # Database schema
+├── pyproject.toml                # Python dependencies
 └── README.md
 ```
+
+
 
 ## 🔐 Supabase Auth & Storage Blueprint
 
@@ -239,6 +313,56 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
    - Create a new API key
    - Add it to your `.env` file
 
+## Deployment
+
+### AWS Amplify (Frontend)
+1. Connect GitHub repository to Amplify
+2. Configure build settings:
+```
+      version: 1
+   frontend:
+     phases:
+       preBuild:
+         commands:
+           - cd frontend && npm install
+       build:
+         commands:
+           - cd frontend && npm run build
+     artifacts:
+       baseDirectory: frontend/.next
+       files:
+         - '**/*'
+```
+4. Set environment variables in Amplify Console
+5. Deploy
+
+### AWS EC2 (Backend)
+1. Launch EC2 instance (t3.micro recommended)
+2. SSH into instance
+```
+   ssh -i your-key.pem ubuntu@your-ec2-ip
+```
+4.  Clone repository and setup:
+```
+   git clone https://github.com/JLeeq/sprite-studio.git
+   cd sprite-studio
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+```
+4. Start services:
+```
+   # FastAPI
+   nohup python -m uvicorn backend.api_server:app --host 0.0.0.0 --port 8000 > /tmp/api.log 2>&1 &
+   
+   # Gradio
+   nohup python -m backend.game_asset_app > /tmp/gradio.log 2>&1 &
+```
+5. Configure security groups (ports 8000, 7861)
+6. Set up Elastic IP and Route 53 DNS
+
+
+
 ## 🎨 Style Options
 
 Choose from various art styles, moods, color palettes, character styles, and composition options to create unique game assets:
@@ -264,19 +388,21 @@ You can use this tool to generate game assets for various game types:
 3. **Puzzle Games**: Various items and background elements
 4. **Adventure Games**: Environmental backgrounds and interactive objects
 
-## 🤝 Contributing
-
-If you'd like to contribute to this project:
-
-1. Fork this repository
-2. Create a new feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is distributed under the MIT License. See the `LICENSE` file for more details.
+## Troubleshooting
+### 1. CORS Errors
+- Ensure Amplify URL is in backend/api_server.py allowed origins
+- Check FastAPI CORS middleware configuration
+### 2. Token Not Updating
+- Verify FastAPI /profile endpoint is accessible
+- Check browser console for fetch errors
+- Confirm 5-second polling is active
+### 3. Image Generation Fails
+- Check API key is valid and not leaked
+- Verify Gemini API quota
+- Check EC2 logs: tail -f /tmp/gradio.log
+### 4. Database Errors
+- Run supabase_schema.sql in Supabase Dashboard
+- Verify RLS policies are enabled
 
 ## 🙏 Acknowledgments
 
