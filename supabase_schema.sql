@@ -10,7 +10,7 @@
 CREATE TABLE IF NOT EXISTS public.user_tokens (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    tokens INTEGER NOT NULL DEFAULT 100,
+    tokens INTEGER NOT NULL DEFAULT 10,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(user_id)

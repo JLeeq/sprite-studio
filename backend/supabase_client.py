@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 import jwt
 from supabase import Client, create_client
 
-DEFAULT_TOKEN_COUNT = int(os.environ.get("SUPABASE_INITIAL_TOKENS", "100"))
+DEFAULT_TOKEN_COUNT = int(os.environ.get("SUPABASE_INITIAL_TOKENS", "10"))
 TOKEN_TABLE = os.environ.get("SUPABASE_TOKEN_TABLE", "user_tokens")
 PROJECT_TABLE = os.environ.get("SUPABASE_PROJECT_TABLE", "user_projects")
 GENERATED_TABLE = os.environ.get("SUPABASE_GENERATED_TABLE", "generated_images")
