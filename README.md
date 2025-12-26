@@ -7,17 +7,86 @@ AI-powered 2D game asset generation tool! Create characters, backgrounds, items,
 - LinkedIn: https://www.linkedin.com/in/jianleee/
 - More Detail: https://www.linkedin.com/posts/jianleee_indie-and-solo-game-developers-often-spend-activity-7409553353351032833-IhEY?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEuJUtMBpdDPXXm7UTo9Z0abB5vcvXUFdxA
 
-## 🏗️ Architecture
 
-### Hybrid Architecture
+## Hybrid Architecture (Next.js + Gradio)
 
-This project implements a unique hybrid architecture that leverages the strengths of multiple frameworks:
+- **Next.js Dashboard** (`frontend/`): Login, account management, and dashboard UI
+- **Gradio Studio** (`backend/game_asset_app.py`): Full-featured sprite generation tool
+- **FastAPI Backend** (`backend/api_server.py`): REST API for Next.js (optional, for future use)
 
-- **Next.js Frontend** (`frontend/`): Modern React-based dashboard with authentication, token management, and user interface
-- **FastAPI Backend** (`backend/api_server.py`): RESTful API for profile management, token operations, and image generation endpoints
-- **Gradio Interface** (`backend/game_asset_app.py`): Embedded iframe-based generation studio with rich UI components
-- **Supabase**: Authentication, database (PostgreSQL), and file storage
-- **AWS Infrastructure**: Amplify (frontend hosting), EC2 (backend hosting), Route 53 (DNS)
+### Why Gradio Instead of Pure Next.js?
+
+**Reasons for Choosing Gradio:**
+
+1. **Rapid Development**: Gradio is designed specifically for Python-based ML/AI applications, enabling quick construction of image generation UIs. It provides built-in support for complex file uploads, image previews, and real-time generation status displays.
+
+2. **Rich UI Components**: 
+   - Multiple file uploads and image galleries
+   - Real-time generation progress indicators
+   - Tab-based interface (characters, sprites, backgrounds, items)
+   - Configuration save/load functionality
+   - Complex form inputs (dropdowns, sliders, checkboxes, etc.)
+
+3. **AI Workflow Optimization**: Built-in queuing, state management, and error handling for long-running tasks like image generation.
+
+4. **Python Ecosystem Integration**: Direct use of Python libraries for Gemini API calls, image processing (Pillow), and file I/O, resulting in higher development efficiency.
+
+**Role Division with Next.js:**
+
+- **Next.js**: General web application features like authentication, dashboard, token management, and user profiles
+- **Gradio**: Complex UI and workflows specialized for image generation tasks
+
+If implemented entirely in Next.js, we would need to build file uploads, image previews, real-time status updates, and complex form management from scratch, which would require significant development time.
+
+### Why Separate Deployment? (Amplify + EC2 Split)
+
+**Reasons for Separating Frontend (AWS Amplify) and Backend (EC2):**
+
+1. **Different Technology Stacks**
+   - **Next.js (Frontend)**: Node.js-based, optimized for static files and SSR
+   - **Python Backend**: FastAPI and Gradio are Python-based, requiring different runtime environments
+
+2. **Different Scaling Requirements**
+   - **Frontend**: Static file serving, CDN utilization, low resource usage
+   - **Backend**: CPU/memory-intensive image generation tasks with long execution times
+
+3. **Cost Optimization**
+   - **AWS Amplify**: Optimized for frontend hosting, automatic CI/CD, free tier available
+   - **EC2**: Flexible resource configuration for backend servers, starting with t3.micro and scalable as needed
+
+4. **Independent Deployment and Operations**
+   - Frontend and backend can be deployed and updated independently
+   - Frontend changes don't require backend restarts
+   - Backend updates don't cause frontend downtime
+
+5. **Security and Network Isolation**
+   - Frontend is publicly accessible
+   - Backend access is controlled via security groups (CORS configured to allow only specific domains)
+   - Sensitive information like API keys exists only on the backend
+
+6. **Operational Convenience**
+   - **Amplify**: Automatic deployment, automatic SSL certificate management, branch-based environment separation
+   - **EC2**: Server log inspection, direct debugging, environment variable management, and fine-grained control
+
+**Comparison with Alternatives:**
+
+- **Single Platform Deployment (e.g., Vercel + Python API)**: 
+  - Vercel supports Python serverless functions, but is unsuitable for Gradio's long-running tasks
+  - EC2 is better suited for long-running processes and file system access
+
+- **Docker + Single Server**:
+  - Possible, but inefficient due to different resource requirements between frontend and backend
+  - Separation allows each to operate in an optimized environment
+
+### Architecture Flow
+
+1. User logs in at `http://localhost:3000` (Next.js)
+2. Dashboard shows token count and "Open Sprite Studio" button
+3. Clicking the button navigates to `/studio` (same window, no popup)
+4. Gradio UI loads in an iframe with token passed via query string
+5. Token updates are synchronized via FastAPI polling (5-second interval) between frontend and backend
+
+### Running locally
 
 ### Architecture Flow
 
@@ -35,7 +104,7 @@ This project implements a unique hybrid architecture that leverages the strength
 - **Session Sharing**: JWT tokens shared between Next.js and Gradio via URL parameters
 - **Security**: API keys never logged, CORS properly configured, environment variables secured
 
-## 🚀 Tech Stack
+## Tech Stack
 
 ### Frontend
 - **Next.js 14** (App Router)
@@ -403,11 +472,3 @@ You can use this tool to generate game assets for various game types:
 ### 4. Database Errors
 - Run supabase_schema.sql in Supabase Dashboard
 - Verify RLS policies are enabled
-
-## 🙏 Acknowledgments
-
-- Google Gemini AI models
-- Gradio team
-- All contributors
-
-*Transform your imagination into 2D game assets with the power of AI!*
